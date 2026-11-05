@@ -223,3 +223,16 @@ figcaption{font-size:14px;color:var(--ink-2);margin-top:10px}
   .rv,.rv-img,.rv-img img,.split .ch{opacity:1!important;transform:none!important;clip-path:none!important}
   html{scroll-behavior:auto}
 }
+
+/* ASCII hero (home) */
+.ascii-hero{--ascii-bg:#120d0a;position:relative;height:300vh;background:var(--ascii-bg)}
+.ascii-stick{position:sticky;top:0;height:100svh;overflow:hidden}
+.ascii-stick canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.ascii-stick video{position:absolute;width:2px;height:2px;opacity:0;pointer-events:none}
+.ascii-stick::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 55%,transparent 55%,rgba(0,0,0,.55) 100%)}
+.ascii-stick .hero-copy{will-change:transform,opacity;text-shadow:0 2px 30px rgba(0,0,0,.6)}
+.ascii-stick .hero-copy h1{font-size:clamp(44px,12vw,190px);font-weight:800}
+.ascii-stick .hero-copy p{max-width:40ch;margin:16px 0 0;font-size:clamp(16px,1.4vw,21px);opacity:.92}
+.ascii-veil{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}
+.p-hero .hero-copy,.p-hero .scroll-cue{z-index:3}
+@media (prefers-reduced-motion:reduce){.ascii-hero{height:100svh}}
