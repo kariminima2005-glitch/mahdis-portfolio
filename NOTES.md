@@ -11,3 +11,9 @@
 ## Worth a look
 - AI-assisted images are labelled as such on the site; fine details in them are illustrative, the drawings are authoritative.
 - The three Pavilion reference photos (dunes, superadobe, Shahr-e Farang device) come from the original portfolio; if they're someone else's photos, credit or remove them.
+
+## ASCII journey (home page)
+- `assets/ascii.js` — shared coloured-ASCII renderer (no libraries). Also makes every photo on the project pages resolve out of characters the first time it scrolls into view, and scrambles headings into place.
+- `assets/journey.js` — the home intro: `img/extra/portrait_ascii.webp` (the portrait with its plain background removed and contrast lifted) is drawn as characters; scroll zooms ~150× into her left eye, then the camera flies forward through every image of every project. The background colour follows the project palette (#5A4135 → #304563 → #535746 → #776656). The HUD buttons jump between projects.
+- Every image used on a project page is included in the flight, in the same order (`In Between` 37, `Rasta` 29, `Children Hospital` 23, `Iran Pavilion` 25 = 114). AI-assisted visualisations are tagged.
+- With "reduce motion" switched on in the operating system, the home page shows the same images as a still grid instead.

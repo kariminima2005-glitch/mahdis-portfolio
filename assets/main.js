@@ -7,7 +7,7 @@
   const fmt = t => { t = Math.max(0, t | 0); return (t / 60 | 0) + ':' + String(t % 60).padStart(2, '0'); };
 
   /* ---------- nav ---------- */
-  const nav = $('.nav'), darkHero = $('.ascii-hero, .hero, .p-hero');
+  const nav = $('.nav'), darkHero = $('.journey, .hero, .p-hero');
   let lastY = 0;
   const onScroll = () => {
     const y = scrollY, h = darkHero ? darkHero.offsetHeight - 80 : 0;
