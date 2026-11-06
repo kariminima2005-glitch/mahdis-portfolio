@@ -348,3 +348,10 @@ html.xf body::before{content:"";position:fixed;inset:0;z-index:159;background:va
 .mmenu .mm-contact a{text-decoration:none}
 body.menu-open{overflow:hidden}
 @media (max-width:700px){.menu-btn{display:inline-flex}.nav ul li.hide-sm{display:none}}
+.cr .tag{transition:none;will-change:transform}
+.cr svg{transform-origin:2px 2px;transition:transform .12s}
+.cr.press svg{animation:crpress .26s var(--ease)}
+@keyframes crpress{40%{transform:scale(.78)}100%{transform:none}}
+.cr-ring{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none}
+.cr-ring::after{content:"";position:absolute;left:-14px;top:-14px;width:28px;height:28px;border-radius:50%;border:2px solid var(--c);animation:crring .55s var(--ease) forwards}
+@keyframes crring{from{transform:scale(.2);opacity:.9}to{transform:scale(1.4);opacity:0}}

@@ -14,6 +14,9 @@
   const EYE = JSON.parse(J.dataset.eye);
   const loadImg = it => { const im = $('img', it); if (!im.getAttribute('src')) im.src = it.dataset.img; return im; };
 
+  // always open at her face: the browser must not drop you back in the middle of the flight
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  if (!location.hash) scrollTo(0, 0);
   if (RM) { J.classList.add('flat'); items.forEach(loadImg); return; }
 
   const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
@@ -48,41 +51,78 @@
   }
   layout();
 
-  /* ---------- face ---------- */
+  /* ---------- her face, drawn in characters, and the dive into her right eye ---------- */
   const face = new Image(); face.src = J.dataset.face;
   const FR = Renderer(faceCv, rgb(DARK), 1.5);
-  let F3 = null;
-  if (window.Face3D && J.dataset.depth) {
-    const gc = document.createElement('canvas'); gc.className = 'j-face j-face3d'; gc.setAttribute('aria-hidden', 'true');
-    faceCv.after(gc);
-    try { F3 = window.Face3D(gc, { color: J.dataset.face, depth: J.dataset.depth, depthMax: +J.dataset.depthmax, eye: EYE, grid: innerWidth < 700 ? 120 : 160 }); } catch (e) { F3 = null; }
-    if (F3) { faceCv.style.display = 'none'; F3.face = gc; F3.done.catch(() => { F3 = null; gc.remove(); faceCv.style.display = ''; }); }
-    else gc.remove();
-  }
-  /* turning her head: pointer on desktop, sideways drag or tilt on phones, a slow idle sway otherwise */
-  let yawT = 0, pitchT = 0, yaw = 0, pitch = 0, lastInput = -1e9, drag = null, tilt = null;
-  addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') drag = { x: e.clientX, y: e.clientY, yaw: yawT }; }, { passive: true });
-  addEventListener('pointerup', () => { drag = null; }, { passive: true });
-  addEventListener('pointercancel', () => { drag = null; }, { passive: true });
-  addEventListener('deviceorientation', e => { if (e.gamma != null) tilt = { g: e.gamma, b: e.beta }; }, { passive: true });
-  const ZMAX = 150, LZ = Math.log(ZMAX);
-  let mouse = null, mouseCss = null, mx = 0, my = 0, tmx = 0, tmy = 0;
+  // measured on the portrait (993 × 1280): iris centre and radius, pupil, catchlight, eyelid opening
+  const IRIS = [424, 435], IR = 15.6, PUP = 4.4, GLINT = [429.6, 429.4];
+  const LID = { xm: 421, hw: 46, up: 422, upC: 442, lo: 449, loC: 445 };
+  const IN = [226, 164, 92], RING = [240, 188, 116], MID = [182, 122, 78], OUT = [124, 80, 56], LIMB = [56, 36, 29];
+  const lerp3 = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, p[2] + (q[2] - p[2]) * t];
+  const DIRS = ['-', '\\', '|', '/'], DENSE = " .:-=+*#%&@";
+  let mouse = null, mx = 0, my = 0, tmx = 0, tmy = 0;
   addEventListener('pointermove', e => {
-    lastInput = performance.now();
-    if (e.pointerType !== 'mouse') { if (drag) yawT = clamp(drag.yaw + (e.clientX - drag.x) / W * 1.6, -.7, .7); return; }
-    tmx = e.clientX / W - .5; tmy = e.clientY / H - .5; yawT = tmx * 1.1; pitchT = -tmy * .55;
-    const dpr = Math.min(devicePixelRatio || 1, 1.5); mouse = { x: e.clientX * dpr, y: e.clientY * dpr, r: (small ? 70 : 150) * dpr }; mouseCss = { x: e.clientX, y: e.clientY, r: small ? 70 : 150 };
+    if (e.pointerType !== 'mouse') return;
+    tmx = e.clientX / W - .5; tmy = e.clientY / H - .5;
+    const dpr = Math.min(devicePixelRatio || 1, 1.5); mouse = { x: e.clientX * dpr, y: e.clientY * dpr, r: 150 * dpr };
   }, { passive: true });
+  const born = performance.now();
   function drawFace(a, t) {
-    const zoom = Math.exp(a * LZ);
-    const cols = small ? 84 + a * 30 : 190 + a * 30;
+    const intro = smooth(0, 1700, t - born);            // characters settle into her face when the page opens
+    const cols = (small ? 92 : 196) * (.22 + .78 * intro);
+    let sNow = 1, P = PUP, mixI = 0, rot = 0, tunnel = 0, glint = 1;
+    const iris = (px, py, r, g, b) => {
+      if (mixI <= 0) return null;
+      const dx = px - IRIS[0], dy = py - IRIS[1], rr = Math.hypot(dx, dy);
+      if (rr > IR * 1.12) return null;
+      const tx = (px - LID.xm) / LID.hw, tt = tx * tx;
+      if (tt >= 1) return null;
+      const yu = LID.up + (LID.upC - LID.up) * tt, yl = LID.lo - (LID.lo - LID.loC) * tt;
+      const w = mixI * smooth(yu - .3, yu + 1.4, py) * (1 - smooth(yl - 1.4, yl + .3, py));
+      if (w < .35) return null;
+      const th = Math.atan2(dy, dx) + rot;
+      if (glint > 0) {                                  // her catchlight
+        const gx = (px - GLINT[0]) / 2.6, gy = (py - GLINT[1]) / 1.9, gd = gx * gx + gy * gy;
+        if (gd < 1.9) { const v = glint; return [gd < .5 ? '@' : gd < 1 ? '*' : '+', 60 + 192 * v, 45 + 200 * v, 40 + 198 * v]; }
+      }
+      if (rr < P) {                                     // the pupil: dark and, deep in, rings pulling you through
+        if (tunnel > 0) {
+          const ph = (Math.log(rr / P + .015) * 2.6 + t * .0016) % 1, ang = (th * 6 / Math.PI + 12) % 1;
+          if ((ph + 1) % 1 < .14 && ang < .55) { const v = 60 + 120 * tunnel * (rr / P); return ['.:o'[Math.min(2, (rr / P * 3) | 0)], v * 1.3, v * .9, v * .7]; }
+        }
+        return false;
+      }
+      const u = (rr - P) / (IR - P);
+      if (u > 1) { if (u < 1.09) return [':', 70, 45, 36]; return null; }
+      const fib = .5 + .5 * Math.sin(th * 41 + 2.2 * Math.sin(th * 7 + u * 3));
+      const fib2 = .5 + .5 * Math.sin(th * 97 + u * 6 + Math.sin(th * 13) * 2);
+      const crypt = (u > .3 && u < .78 && Math.sin(th * 11 + 1.3) * Math.sin(u * 9) > .55) ? .45 : 1;
+      const shade = 1 - .38 * smooth(0, 1, -dy / IR);   // the upper lid shades the top of the iris
+      let col = u < .26 ? lerp3(IN, RING, u / .26) : u < .38 ? lerp3(RING, MID, (u - .26) / .12) : u < .86 ? lerp3(MID, OUT, (u - .38) / .48) : lerp3(OUT, LIMB, (u - .86) / .14);
+      const lum = (.4 + .6 * fib * (.62 + .38 * fib2)) * crypt * shade;
+      const k = .5 + lum * .95 + (u < .3 ? .25 * (1 - u / .3) : 0);
+      col = [col[0] * k, col[1] * k, col[2] * k];
+      if (w < 1) col = lerp3([r * 1.4, g * 1.4, b * 1.4], col, w);
+      const ch = fib > .74 && crypt === 1 ? DIRS[Math.round((((th % Math.PI) + Math.PI) % Math.PI) / (Math.PI / 4)) % 4] : DENSE[Math.min(10, 1 + ((lum * 10) | 0))];
+      return [ch, Math.min(255, col[0]), Math.min(255, col[1]), Math.min(255, col[2])];
+    };
     FR.draw(face, {
-      cols, t, noise: .07 * (1 - a), cut: smooth(.86, 1, a) * .2, boost: 1.4, vivid: true, mouse: a < .3 ? mouse : null,
+      cols, t, noise: .07 * (1 - a) + (1 - intro) * .5, cut: 0, boost: 1.4, vivid: true, mouse: a < .25 ? mouse : null,
+      over: iris,
       view: (w, h, sw, sh) => {
         const s0 = small ? Math.max(sh / (h * 1.05), sw / (w * 1.45)) : sh / (h * 1.32);
-        const k = Math.pow(1 / zoom, 1.35);
+        const sEnd = IR / (.62 * Math.hypot(w, h));
+        const e = .3 * a * a * (3 - 2 * a) + .7 * a;
+        const zoom = Math.exp(e * Math.log(s0 / sEnd)) * (1 + .012 * Math.sin(t / 1900) * (1 - a));
+        const k = Math.pow(1 / zoom, 1.25);
         const c0x = sw * (small ? .5 : .3) - mx * 40, c0y = sh * (small ? .5 : .43) - my * 30;
-        return { s: s0 / zoom, cx: EYE[0] * sw + (c0x - EYE[0] * sw) * k, cy: EYE[1] * sh + (c0y - EYE[1] * sh) * k };
+        sNow = s0 / zoom;
+        const Rs = IR / sNow / Math.min(devicePixelRatio || 1, 1.5);
+        mixI = smooth(28, 110, Rs);
+        P = PUP * (1 + .05 * Math.sin(t / 800)) * (1 + 2.35 * smooth(.7, 1, a));
+        rot = a * .7 + t * .00003;
+        tunnel = smooth(.8, .97, a); glint = 1 - smooth(.7, .82, a);
+        return { s: sNow, cx: IRIS[0] + (c0x - IRIS[0]) * k, cy: IRIS[1] + (c0y - IRIS[1]) * k };
       }
     });
   }
@@ -139,20 +179,9 @@
     const s = S - J.offsetTop, a = clamp(s / A), camT = Math.max(0, s - A) * RATIO;
     cam = camT;
     // face
-    const faceOp = 1 - smooth(.9, 1, a);
+    const faceOp = 1 - smooth(.93, 1, a);
     faceCv.style.opacity = faceOp;
-    if (F3 && F3.face) F3.face.style.opacity = faceOp;
-    if (faceOp > 0) {
-      const idle = performance.now() - lastInput > 2500 && !drag;
-      let ty = yawT, tp = pitchT;
-      if (tilt) { ty = clamp(tilt.g / 45, -1, 1) * .55; tp = clamp((tilt.b - 45) / 60, -1, 1) * -.3; }
-      else if (idle) { ty = Math.sin(t / 2600) * .38; tp = Math.sin(t / 3700) * .1; }
-      yaw += (ty - yaw) * k * .35; pitch += (tp - pitch) * k * .35;
-      if (F3 && F3.ready) {
-        F3.render({ a, t, yaw, pitch, light: [mx * 1.1 + yaw * .4, -my * 1.1], mouse: a < .3 && mouse ? mouseCss : null, bg: DARK, small,
-          offX: small ? 0 : .34, offY: small ? .16 : 0, cut: smooth(.86, 1, a) * .2 });
-      } else if (!F3 && face.naturalWidth && t - lastFace > 33) { lastFace = t; drawFace(a, t); }
-    }
+    if (faceOp > 0 && face.naturalWidth && t - lastFace > 30) { lastFace = t; drawFace(a, t); }
     intro.style.opacity = 1 - smooth(.01, .14, a); intro.style.transform = `translateY(${-a * 160}px)`;
     cue.style.opacity = 1 - smooth(0, .05, a);
     // background colour follows the project you are flying through

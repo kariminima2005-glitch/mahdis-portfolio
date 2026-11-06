@@ -26,7 +26,7 @@
     const el = document.createElement('div'); el.className = 'cr'; el.style.setProperty('--c', col);
     el.innerHTML = ARROW(col) + `<span class="tag">${name}</span>`;
     layer.appendChild(el);
-    const a = { el, name, col, x: innerWidth * (.2 + .6 * Math.random()), y: innerHeight * (.25 + .5 * Math.random()), tx: 0, ty: 0, task: null, wander: 0, speed: 5 + Math.random() * 2, seed: Math.random() * 100, follow: i < 2 };
+    const a = { el, tag: el.querySelector('.tag'), name, col, x: innerWidth * (.2 + .6 * Math.random()), y: innerHeight * (.25 + .5 * Math.random()), tx: 0, ty: 0, vx: 0, vy: 0, svx: 0, svy: 0, path: null, task: null, wander: 0, seed: Math.random() * 100, follow: i < 2 };
     a.tx = a.x; a.ty = a.y; return a;
   });
 
@@ -57,7 +57,8 @@
 
   const tracked = [...document.querySelectorAll('main .rv, main .rv-img, main .skills, main h2, main h3, footer .big, footer .row')]
     .filter(el => !el.closest('.journey') && !(el.parentElement && el.parentElement.closest('.rv, .rv-img')));
-  total = tracked.length + (home ? document.querySelectorAll('.j-item').length : 0); count();
+  const jItems = home ? [...document.querySelectorAll('.j-item')] : [];
+  total = tracked.length + jItems.length; count();
   const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { io.unobserve(e.target); enqueue(e.target); } }), { rootMargin: '0px 0px -10% 0px', threshold: .12 });
   tracked.forEach(el => { if (!el.matches('.rv, .rv-img, .skills')) io.observe(el); });
 
@@ -91,17 +92,17 @@
     if (T.kind === 'inspect' && (!el._vis || el._d < 200)) { if (!el._built) { el._built = 1; built++; count(); } return done(); }
     if (T.phase === 0) {              // fly to the top-left corner
       a.tx = r.l; a.ty = r.t;
-      if (Math.hypot(a.x - a.tx, a.y - a.ty) < 10 || now - T.t0 > 1300) { T.phase = 1; T.t1 = now; T.f = frame(a.col); }
+      if ((!a.path && Math.hypot(a.x - a.tx, a.y - a.ty) < 6) || now - T.t0 > 1500) { T.phase = 1; T.t1 = now + 90; T.f = frame(a.col); press(a); }
     } else if (T.phase === 1) {       // drag the selection to the bottom-right
-      const k = clamp((now - T.t1) / (T.kind === 'inspect' ? 520 : 460), 0, 1), e = 1 - Math.pow(1 - k, 3);
+      const k = clamp((now - T.t1) / (T.kind === 'inspect' ? 560 : 520), 0, 1), e = minJerk(k);
       const w = r.w * e, h = r.h * e;
-      a.tx = a.x = r.l + w; a.ty = a.y = r.t + h;
+      a.tx = a.x = r.l + w; a.ty = a.y = r.t + h; a.direct = true;
       Object.assign(T.f.style, { transform: `translate(${r.l}px,${r.t}px)`, width: w + 'px', height: h + 'px' });
       if (k >= 1) {
         T.phase = 2; T.t2 = now;
         const im = el.querySelector('img');
         T.f.querySelector('b').textContent = T.kind === 'inspect' && im ? `${im.getAttribute('width')} × ${im.getAttribute('height')}` : `${Math.round(r.fw)} × ${Math.round(r.fh)}`;
-        T.f.classList.add('sized');
+        T.f.classList.add('sized'); press(a);
         if (T.kind === 'build') { finish(el); pending.delete(el); }
         else if (!el._built) { el._built = 1; built++; count(); }
       }
@@ -130,7 +131,11 @@
       a.tx = cx + Math.cos(ang) * rad * (1 + .2 * Math.sin(now / 900 + i)); a.ty = cy + Math.sin(ang) * rad * .85; return;
     }
     if (a.follow && now - pt < 3000) { a.tx = px + 28 + i * 24; a.ty = py + 24 + i * 16; return; }
-    if (now > a.wander) { a.wander = now + 1800 + Math.random() * 2600; a.tx = innerWidth * (.08 + .84 * Math.random()); a.ty = innerHeight * (.18 + .66 * Math.random()); }
+    if (now > a.wander) {             // short, unhurried moves near where it already is, with pauses in between
+      a.wander = now + 1400 + Math.random() * 3200;
+      const r = Math.min(innerWidth, innerHeight) * (.12 + Math.random() * .22), ang = Math.random() * Math.PI * 2;
+      a.tx = clamp(a.x + Math.cos(ang) * r, innerWidth * .06, innerWidth * .92); a.ty = clamp(a.y + Math.sin(ang) * r, innerHeight * .16, innerHeight * .86);
+    }
   }
 
   /* ---------- tour: the page plays itself ---------- */
@@ -138,6 +143,49 @@
   const setTour = on => { touring = on; tourBtn.textContent = on ? 'Stop' : 'Tour'; tourBtn.setAttribute('aria-pressed', on); bar.classList.toggle('touring', on); };
   tourBtn.addEventListener('click', () => setTour(!touring));
   ['wheel', 'touchstart', 'keydown'].forEach(ev => addEventListener(ev, e => { if (touring && !(e.target && e.target.closest && e.target.closest('.cr-bar'))) setTour(false); }, { passive: true }));
+
+  /* ---------- movement: curved strokes timed like a hand (longer moves take longer, but not
+     proportionally), a small overshoot and settle on arrival, a faint tremor at rest ---------- */
+  const minJerk = t => t * t * t * (10 - 15 * t + 6 * t * t);
+  function move(a, now, dt) {
+    const px = a.x, py = a.y, h = dt / 1000;
+    if (a.direct) { a.direct = false; a.path = null; a.vx = a.vy = 0; }
+    else {
+      const far = Math.hypot(a.tx - a.x, a.ty - a.y);
+      const jump = a.path ? Math.hypot(a.tx - a.path.ex, a.ty - a.path.ey) : 0;
+      if ((!a.path && far > 22) || jump > 80) {
+        const bend = (Math.random() - .5) * .5 * far, nx = -(a.ty - a.y) / (far || 1), ny = (a.tx - a.x) / (far || 1);
+        a.path = { sx: a.x, sy: a.y, bx: nx * bend, by: ny * bend, ex: a.tx, ey: a.ty, t0: now,
+          dur: (160 + 150 * Math.log2(1 + far / 26)) * (a.task ? .85 : 1.3) * (.85 + Math.random() * .3) };
+      }
+      if (a.path) {
+        const P = a.path; P.ex = a.tx; P.ey = a.ty;   // keep aiming at a target that moves (the page scrolls)
+        const t = Math.min(1, (now - P.t0) / P.dur), e = minJerk(t), f = 1 - e;
+        const cx = (P.sx + P.ex) / 2 + P.bx * (1 - t * .6), cy = (P.sy + P.ey) / 2 + P.by * (1 - t * .6);
+        a.x = f * f * P.sx + 2 * f * e * cx + e * e * P.ex; a.y = f * f * P.sy + 2 * f * e * cy + e * e * P.ey;
+        if (t >= 1) {                                // arrive with a little momentum, the spring settles it
+          const d = Math.hypot(P.ex - P.sx, P.ey - P.sy) || 1, sp = Math.min(260, d * .9);
+          a.vx = (P.ex - P.sx) / d * sp; a.vy = (P.ey - P.sy) / d * sp; a.path = null;
+        }
+      } else {
+        const k = 160, c = 2 * Math.sqrt(k) * .6;
+        a.vx += ((a.tx - a.x) * k - a.vx * c) * h; a.vy += ((a.ty - a.y) * k - a.vy * c) * h;
+        a.x += a.vx * h; a.y += a.vy * h;
+        const tr = a.task ? .12 : .35;               // a resting hand is never perfectly still
+        a.x += (Math.sin(now / 410 + a.seed) + .5 * Math.sin(now / 173 + a.seed * 3)) * tr;
+        a.y += (Math.cos(now / 470 + a.seed * 2) + .5 * Math.sin(now / 211 + a.seed)) * tr;
+      }
+    }
+    const vx = (a.x - px) / Math.max(1, dt) * 16, vy = (a.y - py) / Math.max(1, dt) * 16;
+    a.svx += (vx - a.svx) * .18; a.svy += (vy - a.svy) * .18;
+    a.el.style.transform = `translate(${a.x.toFixed(1)}px,${a.y.toFixed(1)}px) rotate(${clamp(a.svx * 1.3, -14, 14).toFixed(1)}deg)`;
+    a.tag.style.transform = `translate(${clamp(-a.svx * 1.6, -12, 12).toFixed(1)}px,${clamp(-a.svy * 1.6, -9, 9).toFixed(1)}px)`;
+  }
+  function press(a) {                                 // a click: the cursor dips and a ring spreads in its colour
+    a.el.classList.remove('press'); void a.el.offsetWidth; a.el.classList.add('press');
+    const r = document.createElement('i'); r.className = 'cr-ring'; r.style.setProperty('--c', a.col);
+    r.style.transform = `translate(${a.x}px,${a.y}px)`; layer.appendChild(r); setTimeout(() => r.remove(), 600);
+  }
 
   /* ---------- loop ---------- */
   let last = 0, carry = 0, sweep = 0;
@@ -152,6 +200,8 @@
     if (now - sweep > 500) {          // anything you scrolled straight past gets built, so it is there when you scroll back
       sweep = now;
       document.querySelectorAll('main .rv:not(.in), main .rv-img:not(.in), main .skills:not(.in)').forEach(el => { if (el.getBoundingClientRect().bottom < 0) { const h = el.parentElement && el.parentElement.closest('.rv, .rv-img'); finish(h && !h._built ? h : el); pending.delete(el); } });
+      tracked.forEach(el => { if (!el._built && el.getBoundingClientRect().bottom < 0) { finish(el); pending.delete(el); } });
+      if (home) jItems.forEach(n => { if (!n._built && n._d !== undefined && n._d < 200) { n._built = 1; built++; count(); } });
     }
     const lbOpen = document.body.classList.contains('lb-open');
     layer.classList.toggle('hide', lbOpen);
@@ -160,10 +210,7 @@
     agents.forEach((a, i) => {
       if (!a.task && !lbOpen) assign(a, now);
       if (a.task) tick(a, now); else idle(a, i, now);
-      const k = 1 - Math.exp(-dt / 1000 * a.speed * (a.task ? 1.8 : 1)), wob = a.task ? 0 : .35;
-      const nx = a.x + (a.tx - a.x) * k + Math.sin(now / 700 + a.seed) * wob, ny = a.y + (a.ty - a.y) * k + Math.cos(now / 830 + a.seed) * wob;
-      const vx = nx - a.x; a.x = nx; a.y = ny;
-      a.el.style.transform = `translate(${a.x.toFixed(1)}px,${a.y.toFixed(1)}px) rotate(${clamp(vx * 1.6, -18, 18).toFixed(1)}deg)`;
+      move(a, now, dt);
     });
   }
   requestAnimationFrame(loop);

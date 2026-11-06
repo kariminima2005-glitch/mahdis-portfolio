@@ -48,10 +48,16 @@
       ctx.textBaseline = 'top';
       const cut = .045 + (o.cut || 0), boost = o.boost || 1.4, noise = o.noise || 0, tq = ((o.t || 0) / 110) | 0;
       const m = o.mouse, r2 = m ? m.r * m.r : 0;
+      const over = o.over;
       for (let y = 0, i = 0; y < rows; y++) {
         for (let x = 0; x < cols; x++, i += 4) {
           const r = d[i], g = d[i + 1], b = d[i + 2];
           let l = (r * .299 + g * .587 + b * .114) / 255, bo = boost, k = -1;
+          if (over) {                     // a drawn layer (her iris) can replace the photo cell by cell
+            const v = over(cx + ((x + .5) * cw - W / 2) * s, cy + ((y + .5) * ch - H / 2) * s, r, g, b, x, y);
+            if (v === false) continue;
+            if (v) { ctx.fillStyle = `rgb(${v[1] | 0},${v[2] | 0},${v[3] | 0})`; ctx.fillText(v[0], x * cw, y * ch); continue; }
+          }
           if (l < cut) continue;
           if (noise) l = clamp(l + (hash(x, y, tq) - .5) * noise);
           if (m) {
