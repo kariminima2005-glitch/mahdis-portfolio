@@ -33,7 +33,8 @@
   });
 
   /* ---------- reveals ---------- */
-  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px', threshold: .08 });
+  // with the builder cursors running, they build each element in; otherwise it simply reveals
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { window.CURSORS ? window.CURSORS.build(e.target) : e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px', threshold: .08 });
   $$('.rv, .rv-img, .skills').forEach((el, i) => { if (RM) el.classList.add('in'); else io.observe(el); });
   $$('[data-stagger]').forEach(g => [...g.children].forEach((c, i) => c.style.transitionDelay = (i % 6) * 90 + 'ms'));
 
@@ -139,7 +140,7 @@
     const reset = () => { z = 1; tx = ty = 0; stage.classList.remove('zoomed'); apply(); };
     function show(i) {
       idx = (i + group.length) % group.length; const t = group[idx]; reset();
-      img.style.opacity = 0; const n = new Image(); n.onload = () => { img.src = n.src; img.alt = t.dataset.cap || ''; img.style.opacity = 1; }; n.src = t.dataset.full;
+      img.style.opacity = 0; const n = new Image(); n.onload = () => { img.src = n.src; img.alt = t.dataset.cap || ''; img.style.opacity = 1; if (window.ASCII && window.ASCII.resolveFixed && !RM) requestAnimationFrame(() => window.ASCII.resolveFixed(img)); }; n.src = t.dataset.full;
       cap.innerHTML = (t.dataset.cap || '') + (t.dataset.src ? `<small>${t.dataset.src}</small>` : '');
       count.textContent = (idx + 1) + ' / ' + group.length;
       const p = group[(idx + 1) % group.length]; if (p) new Image().src = p.dataset.full;
@@ -162,15 +163,66 @@
     stage.addEventListener('wheel', e => { e.preventDefault(); const nz = Math.max(1, Math.min(5, z * (e.deltaY < 0 ? 1.15 : 1 / 1.15))); if (nz === 1) return reset(); z = nz; stage.classList.add('zoomed'); apply(); }, { passive: false });
   }
 
-  /* ---------- page transitions ---------- */
-  const veil = $('.veil');
-  if (veil && !RM) {
-    veil.classList.add('cover'); requestAnimationFrame(() => requestAnimationFrame(() => { veil.classList.add('lift'); veil.classList.remove('cover'); }));
+  /* ---------- page transitions: characters sweep out from where you click, harden into the next
+     project's colour, and the next page dissolves back out of characters ---------- */
+  const XG = ' .:-=+*#%@';
+  function xfade(color, ox, oy, dir, dur, done) {
+    const cv = document.createElement('canvas'); cv.className = 'xfade'; cv.setAttribute('aria-hidden', 'true'); document.body.appendChild(cv);
+    const d = Math.min(devicePixelRatio || 1, 2), W = cv.width = Math.round(innerWidth * d), H = cv.height = Math.round(innerHeight * d), ctx = cv.getContext('2d');
+    const cw = Math.max(11 * d, W / (innerWidth < 700 ? 24 : 62)), ch = cw * 1.55, cols = Math.ceil(W / cw), rows = Math.ceil(H / ch);
+    const th = new Float32Array(cols * rows); let mx = 1;
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) { const v = Math.hypot((x + .5) * cw - ox * d, (y + .5) * ch - oy * d); th[y * cols + x] = v; if (v > mx) mx = v; }
+    for (let i = 0; i < th.length; i++) th[i] = th[i] / mx * .7 + Math.random() * .3;
+    ctx.font = `700 ${ch * .78}px ui-monospace, Menlo, Consolas, monospace`; ctx.textBaseline = 'top';
+    const t0 = performance.now();
+    const step = now => {
+      const k = Math.min(1, (now - t0) / dur);
+      ctx.clearRect(0, 0, W, H);
+      for (let i = 0; i < th.length; i++) {
+        let v = (k * 1.4 - th[i]) / .4; v = v < 0 ? 0 : v > 1 ? 1 : v;
+        if (dir < 0) v = 1 - v;
+        if (v <= 0) continue;
+        const x = (i % cols) * cw, y = ((i / cols) | 0) * ch;
+        ctx.fillStyle = color;
+        if (v >= 1) { ctx.fillRect(x, y, cw + 1, ch + 1); continue; }
+        ctx.globalAlpha = v * .55; ctx.fillRect(x, y, cw + 1, ch + 1); ctx.globalAlpha = 1;
+        ctx.fillStyle = '#FCF5EE'; ctx.fillText(XG[Math.min(9, (v * 10) | 0)], x + cw * .22, y + ch * .1);
+      }
+      if (k < 1) requestAnimationFrame(step); else { if (dir < 0) cv.remove(); done && done(); }
+    };
+    requestAnimationFrame(step);
+    return cv;
+  }
+  const root = document.documentElement;
+  if (root.classList.contains('xf')) {
+    const c = getComputedStyle(root).getPropertyValue('--xfc').trim() || '#5A4135';
+    try { sessionStorage.removeItem('xf'); } catch (e) {}
+    if (RM) root.classList.remove('xf');
+    else { xfade(c, innerWidth / 2, innerHeight / 2, -1, 760); requestAnimationFrame(() => root.classList.remove('xf')); }
+  }
+  setTimeout(() => root.classList.remove('xf'), 1500);   // never leave the page covered
+  if (!RM) {
     document.addEventListener('click', e => {
-      const a = e.target.closest('a[href]'); if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || a.target || a.hasAttribute('download')) return;
+      const a = e.target.closest('a[href]'); if (!a || e.defaultPrevented || e.button || e.metaKey || e.ctrlKey || e.shiftKey || a.target || a.hasAttribute('download')) return;
       const u = new URL(a.href, location.href); if (u.origin !== location.origin || u.hash && u.pathname === location.pathname || /\.(pdf|mp4)$/i.test(u.pathname)) return;
-      e.preventDefault(); veil.style.setProperty('--veil', a.dataset.veil || 'var(--c1)'); veil.classList.remove('lift'); veil.classList.add('cover'); setTimeout(() => location.href = a.href, 520);
+      e.preventDefault();
+      const c = a.dataset.veil || '#5A4135';
+      try { sessionStorage.setItem('xf', JSON.stringify({ c, t: Date.now() })); } catch (err) {}
+      xfade(c, e.clientX || innerWidth / 2, e.clientY || innerHeight / 2, 1, 620, () => { location.href = a.href; });
     });
-    addEventListener('pageshow', e => { if (e.persisted) { veil.classList.remove('cover'); veil.classList.add('lift'); } });
+    addEventListener('pageshow', e => { if (e.persisted) document.querySelectorAll('.xfade').forEach(c => c.remove()); });
+  }
+
+  /* ---------- phone menu ---------- */
+  const mb = $('.menu-btn'), mm = $('#mmenu');
+  if (mb && mm) {
+    const set = o => {
+      mb.setAttribute('aria-expanded', o); mm.classList.toggle('open', o); document.body.classList.toggle('menu-open', o);
+      mb.querySelector('span').textContent = o ? 'Close' : 'Menu';
+      if (o) $$('a', mm).forEach((a, i) => setTimeout(() => window.ASCII && window.ASCII.scramble && window.ASCII.scramble(a, 520), i * 70));
+    };
+    mb.addEventListener('click', () => set(mb.getAttribute('aria-expanded') !== 'true'));
+    mm.addEventListener('click', e => { if (e.target.closest('a')) set(false); });
+    addEventListener('keydown', e => { if (e.key === 'Escape') set(false); });
   }
 })();

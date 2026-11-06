@@ -95,14 +95,32 @@
     if (img) whenLoaded(img, () => resolve(sec, img, small ? 26 : 44, small ? 176 : 344, 1700));
   });
 
-  /* every photo tile resolves out of characters the first time it comes into view */
-  const tio = new IntersectionObserver(es => es.forEach(e => {
-    if (!e.isIntersecting) return;
-    tio.unobserve(e.target);
-    const img = e.target.querySelector('img');
-    whenLoaded(img, () => resolve(e.target, img, small ? 10 : 14, small ? 90 : 150, 1100));
-  }), { threshold: .2 });
-  document.querySelectorAll('main .tile, .portrait').forEach(t => { if (getComputedStyle(t).position === 'static') t.style.position = 'relative'; tio.observe(t); });
+  /* every photo tile resolves out of characters when it is built (by the cursors) or first seen */
+  const resolveTile = t => {
+    if (t._res) return; t._res = 1;
+    if (getComputedStyle(t).position === 'static') t.style.position = 'relative';
+    const img = t.querySelector('img'); if (img) whenLoaded(img, () => resolve(t, img, small ? 10 : 14, small ? 90 : 150, 1100));
+  };
+  window.ASCII.resolveTile = resolveTile;
+  /* the lightbox photo arrives the same way */
+  window.ASCII.resolveFixed = img => {
+    const r = img.getBoundingClientRect(); if (r.width < 20) return;
+    const cv = document.createElement('canvas'); cv.className = 'ascii-fixed'; cv.setAttribute('aria-hidden', 'true');
+    Object.assign(cv.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
+    document.body.appendChild(cv);
+    const R = Renderer(cv, null, 1.5), t0 = performance.now();
+    const step = now => { const k = clamp((now - t0) / 650), e = k * k * (3 - 2 * k);
+      R.draw(img, { cols: (small ? 16 : 24) + e * (small ? 110 : 220), vivid: true, boost: 1.5 }); cv.style.opacity = 1 - smooth(.45, 1, k);
+      if (k < 1) requestAnimationFrame(step); else cv.remove(); };
+    requestAnimationFrame(step);
+  };
+  addEventListener('DOMContentLoaded', () => {
+    if (window.CURSORS) return;          // the builder cursors trigger these instead
+    const tio = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { tio.unobserve(e.target); resolveTile(e.target); } }), { threshold: .2 });
+    document.querySelectorAll('main .tile, .portrait').forEach(t => tio.observe(t));
+    const hio = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { hio.unobserve(e.target); scramble(e.target); } }), { threshold: .6 });
+    document.querySelectorAll('main h2:not(.split), main h3, main .eyebrow, main .num, footer .big').forEach(h => hio.observe(h));
+  });
 
   /* headings and labels scramble through the character ramp before settling */
   const SC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#%&*+=/<>0123456789';
@@ -125,8 +143,6 @@
     requestAnimationFrame(step);
   }
   window.ASCII.scramble = scramble;
-  const hio = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { hio.unobserve(e.target); scramble(e.target); } }), { threshold: .6 });
-  document.querySelectorAll('main h2:not(.split), main h3, main .eyebrow, main .num, footer .big').forEach(h => hio.observe(h));
-  document.querySelectorAll('.nav a, .card h3').forEach(a => a.addEventListener('mouseenter', () => scramble(a.matches('.card h3') ? a : a, 500)));
+  document.querySelectorAll('.nav a, .mmenu a').forEach(a => a.addEventListener('mouseenter', () => scramble(a, 500)));
   document.querySelectorAll('.card').forEach(c => c.addEventListener('mouseenter', () => scramble(c.querySelector('h3'), 500)));
 })();

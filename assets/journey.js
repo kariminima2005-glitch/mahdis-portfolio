@@ -51,11 +51,27 @@
   /* ---------- face ---------- */
   const face = new Image(); face.src = J.dataset.face;
   const FR = Renderer(faceCv, rgb(DARK), 1.5);
+  let F3 = null;
+  if (window.Face3D && J.dataset.depth) {
+    const gc = document.createElement('canvas'); gc.className = 'j-face j-face3d'; gc.setAttribute('aria-hidden', 'true');
+    faceCv.after(gc);
+    try { F3 = window.Face3D(gc, { color: J.dataset.face, depth: J.dataset.depth, depthMax: +J.dataset.depthmax, eye: EYE, grid: innerWidth < 700 ? 120 : 160 }); } catch (e) { F3 = null; }
+    if (F3) { faceCv.style.display = 'none'; F3.face = gc; F3.done.catch(() => { F3 = null; gc.remove(); faceCv.style.display = ''; }); }
+    else gc.remove();
+  }
+  /* turning her head: pointer on desktop, sideways drag or tilt on phones, a slow idle sway otherwise */
+  let yawT = 0, pitchT = 0, yaw = 0, pitch = 0, lastInput = -1e9, drag = null, tilt = null;
+  addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') drag = { x: e.clientX, y: e.clientY, yaw: yawT }; }, { passive: true });
+  addEventListener('pointerup', () => { drag = null; }, { passive: true });
+  addEventListener('pointercancel', () => { drag = null; }, { passive: true });
+  addEventListener('deviceorientation', e => { if (e.gamma != null) tilt = { g: e.gamma, b: e.beta }; }, { passive: true });
   const ZMAX = 150, LZ = Math.log(ZMAX);
-  let mouse = null, mx = 0, my = 0, tmx = 0, tmy = 0;
+  let mouse = null, mouseCss = null, mx = 0, my = 0, tmx = 0, tmy = 0;
   addEventListener('pointermove', e => {
-    tmx = e.clientX / W - .5; tmy = e.clientY / H - .5;
-    const dpr = Math.min(devicePixelRatio || 1, 1.5); mouse = { x: e.clientX * dpr, y: e.clientY * dpr, r: (small ? 70 : 150) * dpr };
+    lastInput = performance.now();
+    if (e.pointerType !== 'mouse') { if (drag) yawT = clamp(drag.yaw + (e.clientX - drag.x) / W * 1.6, -.7, .7); return; }
+    tmx = e.clientX / W - .5; tmy = e.clientY / H - .5; yawT = tmx * 1.1; pitchT = -tmy * .55;
+    const dpr = Math.min(devicePixelRatio || 1, 1.5); mouse = { x: e.clientX * dpr, y: e.clientY * dpr, r: (small ? 70 : 150) * dpr }; mouseCss = { x: e.clientX, y: e.clientY, r: small ? 70 : 150 };
   }, { passive: true });
   function drawFace(a, t) {
     const zoom = Math.exp(a * LZ);
@@ -74,7 +90,10 @@
   /* ---------- stars ---------- */
   const sctx = starCv.getContext('2d');
   const STARS = Array.from({ length: small ? 140 : 260 }, () => ({ x: Math.random() * 2 - 1, y: Math.random() * 2 - 1, z: Math.random() * 3000, c: '.:+*·'[(Math.random() * 5) | 0] }));
+  let prevCam = 0, vel = 0;
   function drawStars(cam, alpha) {
+    vel += (Math.abs(cam - prevCam) - vel) * .2; prevCam = cam;
+    const streak = Math.min(1, vel / 260);
     if (starCv.width !== W || starCv.height !== H) { starCv.width = W; starCv.height = H; }
     sctx.clearRect(0, 0, W, H);
     if (alpha <= 0) return;
@@ -83,6 +102,10 @@
       const dz = ((s.z - cam * .55) % 3000 + 3000) % 3000, f = 520 / (520 + dz);
       const x = W / 2 + (s.x * W * 1.1 - mx * 60) * f, y = H / 2 + (s.y * H * 1.1 - my * 40) * f;
       sctx.globalAlpha = alpha * smooth(3000, 1400, dz) * smooth(0, 220, dz) * .8;
+      if (streak > .08) {
+        const f2 = 520 / (520 + dz + vel * 2.2), x2 = W / 2 + (s.x * W * 1.1 - mx * 60) * f2, y2 = H / 2 + (s.y * H * 1.1 - my * 40) * f2;
+        sctx.strokeStyle = '#FCF5EE'; sctx.lineWidth = .6 + f * 2.2; sctx.beginPath(); sctx.moveTo(x, y); sctx.lineTo(x2, y2); sctx.stroke();
+      }
       sctx.font = `500 ${8 + f * 22}px ui-monospace, Menlo, Consolas, monospace`;
       sctx.fillText(s.c, x, y);
     });
@@ -118,7 +141,18 @@
     // face
     const faceOp = 1 - smooth(.9, 1, a);
     faceCv.style.opacity = faceOp;
-    if (faceOp > 0 && face.naturalWidth && t - lastFace > 33) { lastFace = t; drawFace(a, t); }
+    if (F3 && F3.face) F3.face.style.opacity = faceOp;
+    if (faceOp > 0) {
+      const idle = performance.now() - lastInput > 2500 && !drag;
+      let ty = yawT, tp = pitchT;
+      if (tilt) { ty = clamp(tilt.g / 45, -1, 1) * .55; tp = clamp((tilt.b - 45) / 60, -1, 1) * -.3; }
+      else if (idle) { ty = Math.sin(t / 2600) * .38; tp = Math.sin(t / 3700) * .1; }
+      yaw += (ty - yaw) * k * .35; pitch += (tp - pitch) * k * .35;
+      if (F3 && F3.ready) {
+        F3.render({ a, t, yaw, pitch, light: [mx * 1.1 + yaw * .4, -my * 1.1], mouse: a < .3 && mouse ? mouseCss : null, bg: DARK, small,
+          offX: small ? 0 : .34, offY: small ? .16 : 0, cut: smooth(.86, 1, a) * .2 });
+      } else if (!F3 && face.naturalWidth && t - lastFace > 33) { lastFace = t; drawFace(a, t); }
+    }
     intro.style.opacity = 1 - smooth(.01, .14, a); intro.style.transform = `translateY(${-a * 160}px)`;
     cue.style.opacity = 1 - smooth(0, .05, a);
     // background colour follows the project you are flying through
@@ -131,7 +165,7 @@
       bg = mixc(DARK, pc, wIn);
       if (p !== curP && a >= 1) {
         curP = p; const pl = plates[p];
-        hNum.textContent = pl.dataset.num; hTitle.textContent = pl.dataset.title; hOpen.href = pl.dataset.href;
+        hNum.textContent = pl.dataset.num; hTitle.textContent = pl.dataset.title; hOpen.href = pl.dataset.href; hOpen.dataset.veil = COLORS[p];
         marks.forEach((b, i) => b.classList.toggle('on', i === p)); window.ASCII.scramble && window.ASCII.scramble(hTitle, 600);
       }
     }
@@ -141,7 +175,7 @@
     world.style.transform = `rotateY(${mx * 5}deg) rotateX(${-my * 4}deg)`;
     let passed = 0;
     for (const n of nodes) {
-      const d = n._z - cam;
+      const d = n._z - cam; n._d = d;
       if (d < 260 && n.classList.contains('j-item')) passed++;
       if (d < -140 || d > FAR || wIn <= 0) { vis(n, false); if (d > FAR && d < FAR + 3500) n.classList.contains('j-item') && prep(n); continue; }
       vis(n, true);
@@ -163,7 +197,15 @@
   })).observe(J);
   requestAnimationFrame(frame);
 
-  let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { layout(); FR.fit(); }, 120); });
+  let rt, lw = innerWidth, lh = innerHeight;
+  addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => {
+    if (innerWidth === lw && Math.abs(innerHeight - lh) < 160) return;   // phone address bar showing / hiding
+    const f = (scrollY - J.offsetTop) / Math.max(1, J.offsetHeight);
+    lw = innerWidth; lh = innerHeight; layout(); FR.fit();
+    if (f > 0 && f < 1) { scrollTo(0, J.offsetTop + f * J.offsetHeight); S = scrollY; }
+  }, 150); });
+  /* for the builder cursors: photos currently flying close to the camera */
+  window.JOURNEY = { items: () => items.filter(n => n._vis && n._d > 600 && n._d < 2000 && +n.style.opacity > .6) };
   // keyboard: space / arrows already scroll; Enter on a focused item opens it via the lightbox
   if (location.hash === '#work') requestAnimationFrame(() => { const a = $('#work'); scrollTo(0, J.offsetTop + a.offsetTop); S = scrollY; });
 })();
