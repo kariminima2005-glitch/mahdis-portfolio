@@ -14,6 +14,7 @@
   const layer = document.createElement('div'); layer.className = 'crs'; layer.setAttribute('aria-hidden', 'true');
   document.body.appendChild(layer);
   const home = !!document.querySelector('.journey');
+  if (home) return;                     // the cursors only work on the project pages, never on her face or the flight
 
   /* status bar, like a shared design file: who is working, how much is built, and a tour button */
   const bar = document.createElement('div'); bar.className = 'cr-bar' + (home ? ' top' : '');
@@ -213,5 +214,8 @@
       move(a, now, dt);
     });
   }
+  /* stay out of the way over the big project photo at the top; appear once the explanation starts */
+  const hero = document.querySelector('.p-hero');
+  if (hero) new IntersectionObserver(es => es.forEach(e => { const on = e.intersectionRatio < .45; layer.classList.toggle('away', !on); bar.classList.toggle('away', !on); }), { threshold: [0, .45, 1] }).observe(hero);
   requestAnimationFrame(loop);
 })();

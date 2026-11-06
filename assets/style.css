@@ -355,3 +355,4 @@ body.menu-open{overflow:hidden}
 .cr-ring{position:absolute;left:0;top:0;width:0;height:0;pointer-events:none}
 .cr-ring::after{content:"";position:absolute;left:-14px;top:-14px;width:28px;height:28px;border-radius:50%;border:2px solid var(--c);animation:crring .55s var(--ease) forwards}
 @keyframes crring{from{transform:scale(.2);opacity:.9}to{transform:scale(1.4);opacity:0}}
+.crs.away,.cr-bar.away{opacity:0;pointer-events:none}
