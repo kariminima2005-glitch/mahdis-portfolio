@@ -347,4 +347,4 @@ html.xf body::before{content:"";position:fixed;inset:0;z-index:159;background:va
 .mmenu .mm-contact{margin:36px 0 0;font:500 13px/1.7 ui-monospace,Menlo,Consolas,monospace;opacity:.8}
 .mmenu .mm-contact a{text-decoration:none}
 body.menu-open{overflow:hidden}
-@media (max-width:700px){.menu-btn{display:inline-flex}}
+@media (max-width:700px){.menu-btn{display:inline-flex}.nav ul li.hide-sm{display:none}}
