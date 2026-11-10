@@ -12,11 +12,11 @@
 - AI-assisted images are labelled as such on the site; fine details in them are illustrative, the drawings are authoritative.
 - The three Pavilion reference photos (dunes, superadobe, Shahr-e Farang device) come from the original portfolio; if they're someone else's photos, credit or remove them.
 
-## ASCII journey (home page)
-- `assets/ascii.js` — shared coloured-ASCII renderer (no libraries). Also makes every photo on the project pages resolve out of characters the first time it scrolls into view, and scrambles headings into place.
-- `assets/journey.js` — the home intro: `img/extra/portrait_ascii.webp` (the portrait with its plain background removed and contrast lifted) is drawn as characters; scroll zooms ~150× into her left eye, then the camera flies forward through every image of every project. The background colour follows the project palette (#5A4135 → #304563 → #535746 → #776656). The HUD buttons jump between projects.
-- Every image used on a project page is included in the flight, in the same order (`In Between` 37, `Rasta` 29, `Children Hospital` 23, `Iran Pavilion` 25 = 114). AI-assisted visualisations are tagged.
-- With "reduce motion" switched on in the operating system, the home page shows the same images as a still grid instead.
+## Home page: her face → her eye → a flower → the projects
+- `assets/journey.js` draws her portrait (`img/extra/portrait_ascii.webp`) in coloured characters. Scrolling is one continuous camera move: her face, her right eye (iris redrawn in characters, with her catchlight), a pink dahlia inside her pupil, then on into the heart of the flower, which thins away into the first project's colour.
+- The flower (`img/extra/flower.webp`) is a real photo — "Dahlia" by vultilion on Flickr, CC BY 2.0 (https://creativecommons.org/licenses/by/2.0/), from scikit-learn's sample images — cut out, recoloured pink and contrast-lifted. The credit shows on screen while the flower is visible.
+- `assets/showcase.js` — the four projects, laid out one per screen: title, type, the opening of the concept text, image and film counts, an Open project button, the project film (plays on hover, or tap Play on phones; the frame tilts towards the pointer) and a draggable strip of every image of that project (click any to open it full size). Pills at the top (bottom on phones) jump between projects.
+- With "reduce motion" switched on, the dive is skipped and everything shows immediately.
 
 ## Her face, builder cursors and transitions (update)
 - The home page opens at her face every time (the browser no longer drops you back in the middle of the flight); links such as `index.html#work` still jump to their place.
