@@ -19,7 +19,7 @@
 
   let W, H, small, A;
   function layout() {
-    W = innerWidth; H = innerHeight; small = W < 700;
+    W = innerWidth || document.documentElement.clientWidth || 1280; H = innerHeight || document.documentElement.clientHeight || 800; small = W < 700;
     A = H * (small ? 4.2 : 4.8);                       // scroll used by the whole dive
     J.style.height = Math.round(A + H) + 'px';
   }
@@ -152,6 +152,7 @@
   function frame(t) {
     if (!running) return;
     requestAnimationFrame(frame);
+    if (innerWidth && innerHeight && (innerWidth !== W || Math.abs(innerHeight - H) > 160)) { lw = innerWidth; lh = innerHeight; layout(); }   // first real size, rotation, or a hidden tab
     const dt = Math.min(64, t - (last || t)); last = t;
     const k = 1 - Math.pow(.86, dt / 16.7);
     S += (scrollY - S) * k; if (Math.abs(scrollY - S) < .5) S = scrollY;

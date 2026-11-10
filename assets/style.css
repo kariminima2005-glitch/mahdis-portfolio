@@ -229,7 +229,7 @@ figcaption{font-size:14px;color:var(--ink-2);margin-top:10px}
 .p-hero .hero-copy,.p-hero .scroll-cue{z-index:3}
 
 /* ---------- home journey: face → eye → 3D flight ---------- */
-.journey{position:relative;height:1600vh;background:#1a1310}
+.journey{position:relative;height:540vh;min-height:100vh;background:#1a1310}
 .j-anchor{position:absolute;left:0;top:0;height:1px;width:1px}
 .j-stage{touch-action:pan-y;position:sticky;top:0;height:100vh;height:100svh;overflow:hidden;perspective:900px;perspective-origin:50% 50%;background:#1a1310}
 .j-stage::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;background:radial-gradient(ellipse at 50% 50%,transparent 45%,rgba(0,0,0,.42) 100%)}
