@@ -31,7 +31,7 @@ body.menu-open .nav{color:var(--cream);background:transparent;border-color:trans
 .progress i{display:block;height:100%;background:var(--pc);transform-origin:left;transform:scaleX(0)}
 
 /* ---------- home: the dive ---------- */
-.j-intro h1{font:400 clamp(56px,9vw,150px)/.88 var(--f-display);letter-spacing:-.02em}
+.j-intro h1{font:400 clamp(54px,7.8vw,132px)/.88 var(--f-display);letter-spacing:-.02em}
 .j-intro p:last-child{font-size:clamp(15px,1.15vw,18px);max-width:38ch;opacity:.86}
 .j-cue,.j-credit{font-family:var(--f-body)}
 .j-cue{font-size:11.5px;letter-spacing:.2em}
