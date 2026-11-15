@@ -1,5 +1,4 @@
-/* Coloured ASCII rendering shared by the whole site: a canvas renderer (window.ASCII),
-   characters resolving into photos on project pages, and scrambling headings. No dependencies. */
+/* Coloured character rendering for the home-page portrait (window.ASCII). No dependencies. */
 (() => {
   const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const RAMP = " .`':;,^\"!il~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@";
@@ -75,80 +74,4 @@
     return { draw, fit };
   }
   window.ASCII = { Renderer, RAMP, clamp, smooth, RM };
-  if (RM) return;
-
-  const deep = () => getComputedStyle(document.body).getPropertyValue('--bg-deep').trim() || '#120d0a';
-  const small = matchMedia('(max-width: 700px)').matches;
-
-  /* a canvas laid over an image that resolves from coarse characters into the photo */
-  function resolve(host, img, from, to, dur, done) {
-    const cv = document.createElement('canvas'); cv.className = 'ascii-veil'; cv.setAttribute('aria-hidden', 'true');
-    host.appendChild(cv);
-    const R = Renderer(cv, deep(), 1.5), t0 = performance.now();
-    const step = now => {
-      const k = clamp((now - t0) / dur), e = k * k * (3 - 2 * k);
-      R.draw(img, { cols: from + e * (to - from), zoom: 1.06 - e * .06 });
-      cv.style.opacity = 1 - smooth(.6, 1, k);
-      if (k < 1) requestAnimationFrame(step); else { cv.remove(); done && done(); }
-    };
-    requestAnimationFrame(step);
-  }
-  const whenLoaded = (img, f) => (img.complete && img.naturalWidth ? f() : img.addEventListener('load', f, { once: true }));
-
-  /* project heroes */
-  document.querySelectorAll('.p-hero').forEach(sec => {
-    const img = sec.querySelector('img');
-    if (img) whenLoaded(img, () => resolve(sec, img, small ? 26 : 44, small ? 176 : 344, 1700));
-  });
-
-  /* every photo tile resolves out of characters when it is built (by the cursors) or first seen */
-  const resolveTile = t => {
-    if (t._res) return; t._res = 1;
-    if (getComputedStyle(t).position === 'static') t.style.position = 'relative';
-    const img = t.querySelector('img'); if (img) whenLoaded(img, () => resolve(t, img, small ? 10 : 14, small ? 90 : 150, 1100));
-  };
-  window.ASCII.resolveTile = resolveTile;
-  /* the lightbox photo arrives the same way */
-  window.ASCII.resolveFixed = img => {
-    const r = img.getBoundingClientRect(); if (r.width < 20) return;
-    const cv = document.createElement('canvas'); cv.className = 'ascii-fixed'; cv.setAttribute('aria-hidden', 'true');
-    Object.assign(cv.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
-    document.body.appendChild(cv);
-    const R = Renderer(cv, null, 1.5), t0 = performance.now();
-    const step = now => { const k = clamp((now - t0) / 650), e = k * k * (3 - 2 * k);
-      R.draw(img, { cols: (small ? 16 : 24) + e * (small ? 110 : 220), vivid: true, boost: 1.5 }); cv.style.opacity = 1 - smooth(.45, 1, k);
-      if (k < 1) requestAnimationFrame(step); else cv.remove(); };
-    requestAnimationFrame(step);
-  };
-  addEventListener('DOMContentLoaded', () => {
-    if (window.CURSORS) return;          // the builder cursors trigger these instead
-    const tio = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { tio.unobserve(e.target); resolveTile(e.target); } }), { threshold: .2 });
-    document.querySelectorAll('main .tile, .portrait').forEach(t => tio.observe(t));
-    const hio = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { hio.unobserve(e.target); scramble(e.target); } }), { threshold: .6 });
-    document.querySelectorAll('main h2:not(.split), main h3, main .eyebrow, main .num, footer .big').forEach(h => hio.observe(h));
-  });
-
-  /* headings and labels scramble through the character ramp before settling */
-  const SC = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#%&*+=/<>0123456789';
-  function scramble(el, dur = 900) {
-    if (el.dataset.busy) return; el.dataset.busy = 1;
-    const nodes = []; const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-    while (w.nextNode()) if (w.currentNode.nodeValue.trim()) nodes.push([w.currentNode, w.currentNode.nodeValue]);
-    if (!el.hasAttribute('aria-label') && !el.closest('a,button')) el.setAttribute('aria-label', el.textContent.trim());
-    const total = nodes.reduce((a, n) => a + n[1].length, 0), t0 = performance.now();
-    const step = now => {
-      const k = clamp((now - t0) / dur); let pos = 0;
-      nodes.forEach(([n, txt]) => {
-        n.nodeValue = [...txt].map((c, i) => {
-          const at = (pos + i) / total; return c === ' ' || at < k * 1.15 - .15 ? c : SC[(Math.random() * SC.length) | 0];
-        }).join('');
-        pos += txt.length;
-      });
-      if (k < 1) requestAnimationFrame(step); else { nodes.forEach(([n, txt]) => n.nodeValue = txt); delete el.dataset.busy; }
-    };
-    requestAnimationFrame(step);
-  }
-  window.ASCII.scramble = scramble;
-  document.querySelectorAll('.nav a, .mmenu a').forEach(a => a.addEventListener('mouseenter', () => scramble(a, 500)));
-  document.querySelectorAll('.card').forEach(c => c.addEventListener('mouseenter', () => scramble(c.querySelector('h3'), 500)));
 })();

@@ -5,7 +5,7 @@
   if (!J || !window.ASCII) return;
   const { Renderer, clamp, smooth, RM, RAMP } = window.ASCII;
   const $ = (s, r = J) => r.querySelector(s);
-  const stage = $('.j-stage'), faceCv = $('.j-face'), intro = $('.j-intro'), cue = $('.j-cue'), credit = $('.j-credit');
+  const stage = $('.j-stage'), faceCv = $('.j-face'), intro = $('.j-intro'), cue = $('.j-cue'), credit = $('.j-credit'), steps = $('.j-steps'); let stepN = -1;
 
   // always open at her face, never back in the middle of the dive
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
@@ -88,7 +88,7 @@
   function drawEye(a, t) {
     const intro = smooth(0, 1700, t - born);
     const cols = (small ? 92 : 196) * (.22 + .78 * intro);
-    let sNow = 1, P = PUP, mixI = 0, rot = 0, glint = 1, fl = 0, thin = 0;
+    let sNow = 1, P = PUP, mixI = 0, rot = 0, glint = 1, fl = 0, thin = 0, bloom = 0, swirl = 0, MP = null, MR = 0;
     const iris = (px, py, r, g, b, cx, cy) => {
       if (mixI <= 0) return null;
       const dx = px - IRIS[0], dy = py - IRIS[1], rr = Math.hypot(dx, dy);
@@ -105,9 +105,24 @@
       if (rr < P) {                                      // the pupil holds a flower
         if (fl <= 0) return false;
         if (thin > 0 && (((cx * 73856093) ^ (cy * 19349663)) >>> 0) % 997 / 997 < thin) return false;   // the heart of the flower dissolves into the projects
-        const v = petal(FC[0] * FW + dx * FK, FC[1] * FH + dy * FK, t);
+        let fx = dx * FK, fy = dy * FK;                  // flower pixels from the flower's centre
+        if (MP) {                                        // the pointer is a drop of water on the petals: they swell under it
+          const ex = px - MP[0], ey = py - MP[1], ed = Math.hypot(ex, ey);
+          if (ed < MR) { const q = 1 - ed / MR, g = q * q * .42 * FK; fx -= ex * g; fy -= ey * g; }
+        }
+        const RF = FR * FW, ro = Math.hypot(fx, fy) / RF;
+        const rs = ro / ((.26 + .74 * bloom) * (1 + .014 * Math.sin(t / 1150)));   // it opens from a bud and keeps breathing
+        if (rs > 1.06) return false;
+        const inner = 1 - Math.min(1, rs);
+        const tw = (1 - bloom) * 2.6 * inner               // the petals unwind as it opens
+          + .055 * Math.sin(t / 1400 + rs * 5.5) * bloom   // and sway, the outer ones a beat behind the inner
+          + swirl * 1.5 * inner + t * .00005;              // deeper in, the heart turns and draws you through
+        const ths = Math.atan2(fy, fx) - tw, rr2 = rs * RF;
+        const v = petal(FC[0] * FW + Math.cos(ths) * rr2, FC[1] * FH + Math.sin(ths) * rr2, t);
         if (!v) return false;
-        if (fl < 1) { v[1] *= fl; v[2] *= fl; v[3] *= fl; }
+        // a slow ring of light travels out across the petals
+        const wave = Math.max(0, Math.sin(rs * 11 - t / 520)), lift = 1.32 * (1 + .3 * wave * wave * bloom) * (fl < 1 ? fl : 1) * (.55 + .45 * bloom);
+        v[1] = Math.min(255, v[1] * lift + 14); v[2] = Math.min(255, v[2] * lift); v[3] = Math.min(255, v[3] * lift + 10);
         return v;
       }
       const th = Math.atan2(dy, dx) + rot, u = (rr - P) / (IR - P);
@@ -142,7 +157,11 @@
         P = PUP * (1 + .04 * Math.sin(t / 800) * (1 - a)) * (1 + .75 * smooth(.4, .58, a));
         rot = a * .7 + t * .00003; thin = smooth(.86, .99, a);
         glint = 1 - smooth(.5, .6, a);
-        fl = smooth(.3, .5, a);                          // the flower glows up inside the pupil
+        fl = smooth(.3, .42, a);                         // the flower glows up inside the pupil
+        bloom = smooth(.33, .6, a); bloom = 1 - Math.pow(1 - bloom, 2.2);   // and opens, quick at first, settling slowly
+        swirl = smooth(.7, 1, a);
+        const ccx = IRIS[0] + (c0x - IRIS[0]) * k, ccy = IRIS[1] + (c0y - IRIS[1]) * k;
+        if (mouse && a > .3) { MP = [ccx + (mouse.x - w / 2) * sNow, ccy + (mouse.y - h / 2) * sNow]; MR = mouse.r * 1.25 * sNow; } else MP = null;
         return { s: sNow, cx: IRIS[0] + (c0x - IRIS[0]) * k, cy: IRIS[1] + (c0y - IRIS[1]) * k };
       }
     });
@@ -159,11 +178,13 @@
     mx += (tmx - mx) * k * .6; my += (tmy - my) * k * .6;
     const a = clamp((S - J.offsetTop) / A);
     // dark into the pupil, then the flower's heart thins away into the first project's colour
-    stage.style.backgroundColor = rgb(a < .9 ? mixc(DARK, NIGHT, smooth(.3, .5, a)) : mixc(NIGHT, LAND, smooth(.9, 1, a)));
+    stage.style.backgroundColor = rgb(a < .945 ? mixc(DARK, NIGHT, smooth(.3, .5, a)) : mixc(NIGHT, LAND, smooth(.945, 1, a)));
     if (t - lastDraw > 30 && face.naturalWidth) { lastDraw = t; drawEye(a, t); }
-    faceCv.style.opacity = 1 - smooth(.965, 1, a);
+    faceCv.style.opacity = 1 - smooth(.95, 1, a);
     intro.style.opacity = 1 - smooth(.01, .06, a); intro.style.transform = `translateY(${-a * 260}px)`;
     cue.style.opacity = 1 - smooth(0, .03, a);
+    stage.style.setProperty('--vig', (1 - smooth(.93, 1, a)).toFixed(3));
+    if (steps) { const n = a < .16 ? 0 : a < .36 ? 1 : a < .9 ? 2 : 3; if (n !== stepN) { stepN = n; [...steps.children].forEach((s, i) => s.classList.toggle('on', i === n)); } steps.style.opacity = 1 - smooth(.95, 1, a); }
     if (credit) credit.style.opacity = smooth(.42, .55, a) * (1 - smooth(.94, 1, a));
   }
   new IntersectionObserver(es => es.forEach(e => {
