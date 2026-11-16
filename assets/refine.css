@@ -211,7 +211,7 @@ html.xf .curtain{transform:none;background:var(--xfc,#1d1814)}
 .m3d.nogl .m3d-note,.m3d.nogl .m3d-steps,.m3d.nogl .m3d-lvl,.m3d.nogl .m3d-bar,.m3d.nogl .m3d-drag{display:none}
 @media (max-width:800px){
   .m3d{height:300vh}
-  .m3d-ui{justify-content:flex-end;padding-bottom:clamp(54px,9vh,84px)}
+  .m3d-ui{justify-content:flex-end;padding-bottom:calc(98px + env(safe-area-inset-bottom,0px))}
   .m3d-ui>*{max-width:100%}
   .m3d-word{font-size:clamp(64px,21vw,110px)}
   .m3d-note{font-size:15px;max-width:30ch}
