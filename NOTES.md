@@ -39,3 +39,4 @@ from plan view and the sun moves round; drag (or arrow keys) turns the model.
 - Fallbacks: no WebGL / failed load → the poster in `img/m3d/`; reduced motion → the finished model, no pinning.
 - Each project page carries the same scene (`#model`, "3D model" in the section index), placed before the Revit drawing set. The loader lives in `refine.js`.
 - Realism pass: colours are the Revit materials (baked per vertex; placeholder greys fall back to plaster, the pavilion domes use an earth tone), glass reflects an environment map, and desktop adds screen-space ambient occlusion (n8ao). Phones skip the AO pass.
+- Render stage: after the model is complete it dissolves into a Cycles render made in Blender from the same geometry (`img/m3d/*_render.webp`, scene files and `render.py` are in `Revit_Professional_2026-11/_blender`). Sky, ground and trees are an illustrative setting, not a site survey. The live scene carries a matching soft ground tone and low-poly trees.
