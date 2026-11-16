@@ -40,3 +40,10 @@ from plan view and the sun moves round; drag (or arrow keys) turns the model.
 - Each project page carries the same scene (`#model`, "3D model" in the section index), placed before the Revit drawing set. The loader lives in `refine.js`.
 - Realism pass: colours are the Revit materials (baked per vertex; placeholder greys fall back to plaster, the pavilion domes use an earth tone), glass reflects an environment map, and desktop adds screen-space ambient occlusion (n8ao). Phones skip the AO pass.
 - Render stage: after the model is complete it dissolves into a Cycles render made in Blender from the same geometry (`img/m3d/*_render.webp`, scene files and `render.py` are in `Revit_Professional_2026-11/_blender`). Sky, ground and trees are an illustrative setting, not a site survey. The live scene carries a matching soft ground tone and low-poly trees.
+
+## Audit pass (16 November 2026)
+
+Automated WCAG 2.2 AA scan (axe-core) on every page now reports no violations. Fixed: the closed image viewer is `inert`,
+the film scrubber exposes slider values, caption/sub-heading contrast, focus rings on the 3D controls, 24 px minimum targets
+in the footer. Added canonical URLs, absolute 1200×630 social images (`img/og/`), Twitter card tags, Person JSON-LD,
+`sitemap.xml`, `robots.txt`, and a real 404 page. Films no longer preload until they are near the viewport.

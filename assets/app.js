@@ -63,6 +63,7 @@
     const tip = $('.tip', track), timeEl = $('.time', root), pp = $('.pp', root), big = $('.big-play', root);
     const capT = $('.cap .t', root), capAi = $('.cap .ai', root), strip = $('.strip', root), chapEl = $('.chapters', root);
     const D = data.duration, chapters = data.chapters, scenes = data.scenes;
+    if (v.preload === 'none' && 'IntersectionObserver' in window) { const near = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { near.disconnect(); v.preload = 'metadata'; } }, { rootMargin: '100% 0px' }); near.observe(root); }
     const segs = chapters.map(c => { const s = document.createElement('div'); s.className = 'seg'; s.style.flex = (c.end - c.start); s.style.setProperty('--sc', c.color); s.innerHTML = '<i></i>'; segsEl.appendChild(s); return s; });
     if (chapEl) chapters.forEach((c, i) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = c.title; b.style.setProperty('--sc', c.color); b.onclick = () => seek(c.start + .01, true); chapEl.appendChild(b); c.btn = b; });
     const sbtn = scenes.map((s, i) => { const b = document.createElement('button'); b.type = 'button'; b.style.setProperty('--sc', s.color || ''); b.innerHTML = `<img loading="lazy" src="${s.thumb}" alt=""><span>${s.caption}</span>`; b.onclick = () => { if (strip.moved) return; seek(s.start + .05, true); }; strip.appendChild(b); return b; });
@@ -73,6 +74,7 @@
       knob.style.left = (t / D * 100) + '%';
       chapters.forEach((c, i) => { const f = Math.min(1, Math.max(0, (t - c.start) / (c.end - c.start))); segs[i].firstChild.style.transform = `scaleX(${f})`; c.btn && c.btn.classList.toggle('on', t >= c.start && t < c.end); });
       timeEl.textContent = fmt(t) + ' / ' + fmt(D);
+      const pc = Math.round(t / D * 100) || 0; if (pc !== track._pc) { track._pc = pc; track.setAttribute('aria-valuenow', pc); track.setAttribute('aria-valuetext', fmt(t) + ' of ' + fmt(D)); }
       const i = sceneAt(t);
       if (i !== cur) {
         cur = i; const s = scenes[i];
@@ -146,8 +148,8 @@
       const p = group[(idx + 1) % group.length]; if (p) new Image().src = p.dataset.full;
     }
     let opener;
-    function open(t) { opener = t; group = $$(`[data-lb="${t.dataset.lb}"]`); lb.classList.add('open'); lb.setAttribute('aria-hidden', 'false'); document.body.classList.add('lb-open'); document.body.style.overflow = 'hidden'; show(group.indexOf(t)); $('.lb-close', lb).focus(); }
-    function close() { lb.classList.remove('open'); lb.setAttribute('aria-hidden', 'true'); document.body.classList.remove('lb-open'); document.body.style.overflow = ''; opener && opener.focus({ preventScroll: true }); }
+    function open(t) { opener = t; group = $$(`[data-lb="${t.dataset.lb}"]`); lb.classList.add('open'); lb.inert = false; lb.setAttribute('aria-hidden', 'false'); document.body.classList.add('lb-open'); document.body.style.overflow = 'hidden'; show(group.indexOf(t)); $('.lb-close', lb).focus(); }
+    function close() { lb.classList.remove('open'); lb.setAttribute('aria-hidden', 'true'); lb.inert = true; document.body.classList.remove('lb-open'); document.body.style.overflow = ''; opener && opener.focus({ preventScroll: true }); }
     document.addEventListener('click', e => { const t = e.target.closest('[data-lb]'); if (t && !(t.closest('.rail') || {}).moved) { e.preventDefault(); open(t); } });
     $('.lb-close', lb).onclick = close; $('.lb-prev', lb).onclick = () => show(idx - 1); $('.lb-next', lb).onclick = () => show(idx + 1);
     document.addEventListener('keydown', e => { if (!lb.classList.contains('open')) return; if (e.key === 'Escape') close(); if (e.key === 'ArrowRight') show(idx + 1); if (e.key === 'ArrowLeft') show(idx - 1); });
