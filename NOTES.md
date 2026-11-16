@@ -38,3 +38,4 @@ from plan view and the sun moves round; drag (or arrow keys) turns the model.
 - `assets/model3d.js`: three.js scene, bundled; loaded by `showcase.js` only when the projects are near.
 - Fallbacks: no WebGL / failed load → the poster in `img/m3d/`; reduced motion → the finished model, no pinning.
 - Each project page carries the same scene (`#model`, "3D model" in the section index), placed before the Revit drawing set. The loader lives in `refine.js`.
+- Realism pass: colours are the Revit materials (baked per vertex; placeholder greys fall back to plaster, the pavilion domes use an earth tone), glass reflects an environment map, and desktop adds screen-space ambient occlusion (n8ao). Phones skip the AO pass.
