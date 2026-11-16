@@ -34,3 +34,13 @@
     addEventListener('scroll', vis, { passive: true }); vis();
   }
 })();
+
+/* The 3D models load only when a model scene is close (the script is ~125 KB gzipped). */
+(() => {
+  const first = document.querySelector('.m3d');
+  if (!first) return;
+  const go = () => { if (go.done) return; go.done = true; const s = document.createElement('script'); s.src = 'assets/model3d.js?v=25'; s.async = true; s.onerror = () => document.querySelectorAll('.m3d').forEach(e => { e.classList.add('nogl'); e.querySelector('.m3d-word').textContent = 'Model'; }); document.body.appendChild(s); };
+  if (!('IntersectionObserver' in window)) return go();
+  const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { io.disconnect(); go(); } }, { rootMargin: '250% 0px 250% 0px' });
+  document.querySelectorAll('.m3d').forEach(e => io.observe(e));
+})();

@@ -225,3 +225,6 @@ html.xf .curtain{transform:none;background:var(--xfc,#1d1814)}
   .m3d{height:auto}.m3d-pin{position:relative}.m3d-word.in{animation:none}.m3d-steps,.m3d-bar{display:none}
   .m3d-open{opacity:1;transform:none;visibility:visible}
 }
+.m3d-eye{white-space:nowrap;max-width:none}
+.m3d-note{max-width:min(30ch,26vw)}
+@media (max-width:800px){.m3d-eye{white-space:normal}.m3d-note{max-width:30ch}}

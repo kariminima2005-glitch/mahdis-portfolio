@@ -37,3 +37,4 @@ from plan view and the sun moves round; drag (or arrow keys) turns the model.
   triangle and edge indices). Railings, window frames and small objects are simplified; nothing is redrawn by hand.
 - `assets/model3d.js`: three.js scene, bundled; loaded by `showcase.js` only when the projects are near.
 - Fallbacks: no WebGL / failed load → the poster in `img/m3d/`; reduced motion → the finished model, no pinning.
+- Each project page carries the same scene (`#model`, "3D model" in the section index), placed before the Revit drawing set. The loader lives in `refine.js`.
