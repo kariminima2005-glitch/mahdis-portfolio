@@ -167,3 +167,61 @@ html.xf .curtain{transform:none;background:var(--xfc,#1d1814)}
   .sec-head{border-bottom:0;padding-bottom:0}
   .next{height:64vh}
 }
+
+/* ---------- the Revit models, built by scrolling ---------- */
+.m3d{position:relative;height:340vh;background:var(--paper);color:var(--inkc)}
+.m3d-pin{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden}
+.m3d-canvas,.m3d-poster{position:absolute;inset:0;width:100%;height:100%;display:block}
+.m3d-poster{object-fit:cover;opacity:.0;transition:opacity .6s var(--ease)}
+.m3d.nogl .m3d-poster{opacity:1}
+.m3d-canvas{opacity:0;transition:opacity .7s var(--ease)}
+.m3d.ready .m3d-canvas{opacity:1}
+.m3d-drag{position:absolute;inset:0;cursor:grab;touch-action:pan-y;outline-offset:-6px}
+.m3d-drag.grab{cursor:grabbing}
+.m3d-ui{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;pointer-events:none}
+.m3d-ui>*{max-width:min(38ch,34vw)}
+.m3d-eye{margin:0 0 clamp(10px,1.4vw,22px);font:600 12px/1 var(--f-body);letter-spacing:.2em;text-transform:uppercase;color:var(--pc)}
+.m3d-eye span{display:inline-block;margin-right:1.1em;padding-right:1.1em;border-right:1px solid currentColor;font-variant-numeric:tabular-nums;opacity:.7}
+.m3d-word{margin:0;font:400 clamp(72px,10.5vw,176px)/.84 var(--f-display);letter-spacing:-.03em;color:var(--inkc)}
+.m3d-word.in{animation:m3dw .7s var(--ease) both}
+@keyframes m3dw{from{opacity:0;transform:translateY(.18em);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
+.m3d-note{margin:clamp(16px,1.8vw,28px) 0 0;font-size:clamp(15px,1.1vw,18px);line-height:1.5;color:rgba(29,24,20,.7)}
+.m3d-steps{list-style:none;display:flex;gap:1.6em;margin:clamp(18px,2vw,30px) 0 0;padding:0;font:600 11.5px/1 var(--f-body);letter-spacing:.18em;text-transform:uppercase;color:rgba(29,24,20,.34)}
+.m3d-steps li{position:relative;padding-top:12px;transition:color .4s}
+.m3d-steps li::before{content:"";position:absolute;left:0;top:0;width:100%;height:1px;background:currentColor;transform-origin:left;transition:transform .5s var(--ease)}
+.m3d-steps li.on{color:var(--pc)}
+.m3d-steps li.on::before{height:2px}
+.m3d-lvl{margin:14px 0 0;min-height:1.2em;font:500 13px/1.2 var(--f-body);letter-spacing:.06em;font-variant-numeric:tabular-nums;color:rgba(29,24,20,.62)}
+.m3d-open{pointer-events:auto;display:inline-flex;align-items:center;gap:.7em;margin-top:clamp(20px,2.4vw,36px);padding:14px 22px;border-radius:999px;background:var(--pc);color:var(--paper);font:600 13px/1 var(--f-body);letter-spacing:.08em;text-transform:uppercase;text-decoration:none;opacity:0;transform:translateY(10px);transition:opacity .5s var(--ease),transform .5s var(--ease),background .25s;visibility:hidden}
+.m3d.done .m3d-open,.m3d.nogl .m3d-open,.m3d-open:focus-visible{opacity:1;transform:none;visibility:visible}
+.m3d-open:hover{background:var(--inkc)}
+.m3d-open svg{transition:transform .3s var(--ease)}
+.m3d-open:hover svg{transform:translateX(4px)}
+.m3d-hint,.m3d-load{position:absolute;right:clamp(20px,4vw,56px);bottom:clamp(22px,3.4vw,44px);margin:0;display:flex;align-items:center;gap:.7em;font:600 11.5px/1 var(--f-body);letter-spacing:.18em;text-transform:uppercase;color:rgba(29,24,20,.5);pointer-events:none;transition:opacity .5s}
+.m3d-hint{opacity:0}
+.m3d.ready .m3d-hint{opacity:1}
+.m3d.turned .m3d-hint,.m3d.nogl .m3d-hint{opacity:0}
+.m3d-load{opacity:0}
+.m3d.loading .m3d-load{opacity:1;animation:m3dl 1.2s ease-in-out infinite alternate}
+@keyframes m3dl{from{opacity:.3}to{opacity:.9}}
+.m3d-bar{position:absolute;left:0;right:0;bottom:0;height:2px;background:rgba(29,24,20,.08)}
+.m3d-bar i{display:block;height:100%;background:var(--pc);transform-origin:left;transform:scaleX(0)}
+.m3d.nogl{height:auto}
+.m3d.nogl .m3d-pin{position:relative}
+.m3d.nogl .m3d-note,.m3d.nogl .m3d-steps,.m3d.nogl .m3d-lvl,.m3d.nogl .m3d-bar,.m3d.nogl .m3d-drag{display:none}
+@media (max-width:800px){
+  .m3d{height:300vh}
+  .m3d-ui{justify-content:flex-end;padding-bottom:clamp(54px,9vh,84px)}
+  .m3d-ui>*{max-width:100%}
+  .m3d-word{font-size:clamp(64px,21vw,110px)}
+  .m3d-note{font-size:15px;max-width:30ch}
+  .m3d-ui::before{content:"";position:absolute;left:0;right:0;bottom:0;height:62%;background:linear-gradient(to top,var(--paper) 58%,rgba(247,243,236,0));z-index:-1}
+  .m3d-ui{z-index:1}
+  .m3d-hint,.m3d-load{right:var(--gut,22px);bottom:auto;top:calc(58px + env(safe-area-inset-top,0px))}
+  .m3d-open{margin-top:16px;padding:12px 18px}
+  .m3d-poster{object-fit:contain;object-position:50% 20%}
+}
+@media (prefers-reduced-motion:reduce){
+  .m3d{height:auto}.m3d-pin{position:relative}.m3d-word.in{animation:none}.m3d-steps,.m3d-bar{display:none}
+  .m3d-open{opacity:1;transform:none;visibility:visible}
+}

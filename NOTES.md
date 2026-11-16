@@ -26,3 +26,14 @@
 - **Project pages** have a facts row (type, software, image count, film length, sheets), a reading-progress line and a section index on the right edge (`assets/refine.js`).
 - `assets/refine.css` is loaded after `style.css` and holds all of the above styling.
 - With "reduce motion" switched on, the dive, reveals and curtain are off.
+
+## 3D models (November 2026)
+
+Each project on the home page opens with its Revit model in WebGL (`.m3d` sections, before each `.sc-panel`).
+Scrolling raises a section plane through the building (Plan → Section → Model) while the camera comes down
+from plan view and the sun moves round; drag (or arrow keys) turns the model.
+
+- `models/*.mdl`: geometry exported from the four `.rvt` files (gzip of a JSON header + 16-bit positions,
+  triangle and edge indices). Railings, window frames and small objects are simplified; nothing is redrawn by hand.
+- `assets/model3d.js`: three.js scene, bundled; loaded by `showcase.js` only when the projects are near.
+- Fallbacks: no WebGL / failed load → the poster in `img/m3d/`; reduced motion → the finished model, no pinning.
