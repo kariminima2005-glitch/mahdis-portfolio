@@ -260,3 +260,8 @@ footer a,.brand{display:inline-block;min-height:24px;padding-block:4px}
 .strip button img{opacity:.55;transition:opacity .3s,outline-color .3s}
 .strip button.on img,.strip button:hover img,.strip button:focus-visible img{opacity:1}
 .strip button.on span{color:var(--cream)}
+/* the text column always sits on paper, so trees and ground never run behind the words */
+.m3d-pin::after{background:linear-gradient(90deg,var(--paper) 0,rgba(247,243,236,.96) 27%,rgba(247,243,236,0) 50%)}
+.m3d.ready .m3d-pin::after{opacity:.94}
+.m3d.rendered .m3d-pin::after{opacity:1}
+.m3d-canvas{-webkit-mask-image:linear-gradient(transparent 0,#000 10%,#000 90%,transparent);mask-image:linear-gradient(transparent 0,#000 10%,#000 90%,transparent)}
